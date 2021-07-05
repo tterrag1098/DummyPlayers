@@ -38,7 +38,7 @@ public class DummyPlayerEntityRenderer extends LivingRenderer<DummyPlayerEntity,
 
 	@Override
 	protected boolean canRenderName(DummyPlayerEntity entity) {
-		return entity.getProfile() != null || entity.hasCustomName();
+		return !entity.getProfile().equals(DummyPlayerEntity.NULL_PROFILE) || entity.hasCustomName();
 	}
 
 	@Override

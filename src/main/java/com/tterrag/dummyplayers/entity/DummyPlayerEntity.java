@@ -105,6 +105,7 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 		DataSerializers.registerSerializer(PROFILE_SERIALIZER);
 	}
 
+	public static final GameProfile NULL_PROFILE = new GameProfile(UUID.fromString("e664daf0-5962-45a5-b8df-e4c992d372a9"), null);
 	private static final DataParameter<GameProfile> GAME_PROFILE = EntityDataManager.createKey(DummyPlayerEntity.class, PROFILE_SERIALIZER);
 	private static final DataParameter<Optional<ITextComponent>> PREFIX = EntityDataManager.createKey(DummyPlayerEntity.class, DataSerializers.OPTIONAL_TEXT_COMPONENT);
 	private static final DataParameter<Optional<ITextComponent>> SUFFIX = EntityDataManager.createKey(DummyPlayerEntity.class, DataSerializers.OPTIONAL_TEXT_COMPONENT);
@@ -138,14 +139,14 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 	@Override
 	protected void registerData() {
 		super.registerData();
-		this.dataManager.register(GAME_PROFILE, null);
+		this.dataManager.register(GAME_PROFILE, NULL_PROFILE);
 		this.dataManager.register(PREFIX, Optional.empty());
 		this.dataManager.register(SUFFIX, Optional.empty());
 	}
 
 	@Override
 	public ITextComponent getProfessionName() {
-		return getProfile() == null || getProfile().getName() == null ? super.getProfessionName() : new StringTextComponent(getProfile().getName());
+		return getProfile().getName() == null ? super.getProfessionName() : new StringTextComponent(getProfile().getName());
 	}
 
 	@Override
@@ -181,7 +182,7 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 			.ifPresent(suffix -> compound.putString("NameSuffix", ITextComponent.Serializer.toJson(suffix)));
 
 		GameProfile profile = getProfile();
-		if (profile == null) return;
+		if (profile.equals(NULL_PROFILE)) return;
 		if (profile.getId() != null) {
 			compound.putUniqueId("ProfileID", profile.getId());
 		} else if (profile.getName() != null) {
@@ -205,11 +206,11 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 			if (!StringUtils.isBlank(name)) {
 				this.dataManager.set(GAME_PROFILE, new GameProfile(null, compound.getString("ProfileName")));
 			} else {
-				this.dataManager.set(GAME_PROFILE, null);
+				this.dataManager.set(GAME_PROFILE, NULL_PROFILE);
 			}
 			fillProfile();
 		} else if (compound.hasUniqueId("ProfileID")) {
-			String existingName = getProfile() == null ? null : getProfile().getName();
+			String existingName = getProfile().getName();
 			UUID newId = compound.getUniqueId("ProfileID");
 			if (getProfile() == null || getProfile().getId() == null && getProfile().getName() == null
 					|| !getProfile().getId().equals(newId)) {
@@ -232,13 +233,13 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 
 	void fillProfile() {
 		final GameProfile profile = getProfile();
-		if (profile == null) {
+		if (!profile.equals(NULL_PROFILE)) {
 			reloadTextures();
 		}
 		CompletableFuture.supplyAsync(() -> {
 			GameProfile ret;
 			if (profile.getId() != null) {
-				ret = PROFILE_CACHE.getValue().getProfileByUUID(getProfile().getId());
+				ret = PROFILE_CACHE.getValue().getProfileByUUID(profile.getId());
 				if (ret != null) return ret;
 				if (SkullTileEntity.sessionService == null) return profile;
 				try {
@@ -268,7 +269,7 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 				if (reloadTextures) {
 					this.playerTextures.clear();
 					reloadTextures = false;
-					if (getProfile() == null || getProfile().getId() == null) return;
+					if (getProfile().equals(NULL_PROFILE) || getProfile().getId() == null) return;
 					LogManager.getLogger().info("Loading skin data for GameProfile: " + getProfile());
 					Minecraft.getInstance().getSkinManager().loadProfileTextures(getProfile(), (p_210250_1_, p_210250_2_, p_210250_3_) -> {
 						synchronized (playerTextures) {
@@ -288,7 +289,7 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 	}
 
 	private UUID getSkinUUID() {
-		return getProfile() == null || getProfile().getId() == null ? getUniqueID() : getProfile().getId();
+		return getProfile().equals(NULL_PROFILE) || getProfile().getId() == null ? getUniqueID() : getProfile().getId();
 	}
 
 	public ResourceLocation getSkin() {
