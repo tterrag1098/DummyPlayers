@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 import javax.annotation.Nullable;
 
@@ -46,6 +47,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.network.PacketDistributor;
 import net.minecraftforge.fml.server.ServerLifecycleHooks;
 
@@ -258,7 +260,11 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 		}).thenAcceptAsync(gp -> {
 			DummyPlayerEntity.this.dataManager.set(GAME_PROFILE, gp);
 			reloadTextures();
-		}, getServer());
+		}, getMainThreadExecutor());
+	}
+
+	private Executor getMainThreadExecutor() {
+		return this.getEntityWorld().isRemote ? DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> Minecraft::getInstance) : getServer();
 	}
 
 	@Nullable
