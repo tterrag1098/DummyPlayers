@@ -210,7 +210,9 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 			} else {
 				this.dataManager.set(GAME_PROFILE, NULL_PROFILE);
 			}
-			fillProfile();
+			if (getProfile() == null || getProfile().getName() == null || !getProfile().getName().equals(name)) {
+				fillProfile();
+			}
 		} else if (compound.hasUniqueId("ProfileID")) {
 			String existingName = getProfile().getName();
 			UUID newId = compound.getUniqueId("ProfileID");
