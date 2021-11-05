@@ -121,9 +121,15 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 
 	// Clientside texture info
 	private boolean reloadTextures = true;
-	private final Map<Type, ResourceLocation> playerTextures = Maps.newEnumMap(Type.class);
-	@Nullable
-	private String skinType;
+	
+	// Holder to avoid leaking entity reference
+	private static class SkinInfo {
+		private final Map<Type, ResourceLocation> playerTextures = Maps.newEnumMap(Type.class);
+		@Nullable
+		private String skinType;
+	}
+	
+	private final SkinInfo skinInfo = new SkinInfo();
 
 	protected DummyPlayerEntity(EntityType<? extends DummyPlayerEntity> type, World worldIn) {
 		super(type, worldIn);
@@ -205,12 +211,13 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 
 		if (compound.contains("ProfileName", Constants.NBT.TAG_STRING)) {
 			String name = compound.getString("ProfileName");
+			GameProfile old = getProfile();
 			if (!StringUtils.isBlank(name)) {
 				this.dataManager.set(GAME_PROFILE, new GameProfile(null, compound.getString("ProfileName")));
 			} else {
 				this.dataManager.set(GAME_PROFILE, NULL_PROFILE);
 			}
-			if (getProfile() == null || getProfile().getName() == null || !getProfile().getName().equals(name)) {
+			if (old == null || old.getName() == null || !old.getName().equals(name)) {
 				fillProfile();
 			}
 		} else if (compound.hasUniqueId("ProfileID")) {
@@ -275,21 +282,21 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 		if (reloadTextures) {
 			synchronized (this) {
 				if (reloadTextures) {
-					this.playerTextures.clear();
+					this.skinInfo.playerTextures.clear();
 					reloadTextures = false;
 					if (getProfile().equals(NULL_PROFILE) || getProfile().getId() == null) return;
 					LogManager.getLogger().info("Loading skin data for GameProfile: " + getProfile());
+					final SkinInfo skinInfo = this.skinInfo;
 					Minecraft.getInstance().getSkinManager().loadProfileTextures(getProfile(), (p_210250_1_, p_210250_2_, p_210250_3_) -> {
-						synchronized (playerTextures) {
-							this.playerTextures.put(p_210250_1_, p_210250_2_);
+						synchronized (skinInfo) {
+							skinInfo.playerTextures.put(p_210250_1_, p_210250_2_);
 							if (p_210250_1_ == Type.SKIN) {
-								this.skinType = p_210250_3_.getMetadata("model");
-								if (this.skinType == null) {
-									this.skinType = "default";
+								skinInfo.skinType = p_210250_3_.getMetadata("model");
+								if (skinInfo.skinType == null) {
+									skinInfo.skinType = "default";
 								}
 							}
 						}
-
 					}, true);
 				}
 			}
@@ -302,22 +309,22 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 
 	public ResourceLocation getSkin() {
 		updateSkinTexture();
-		synchronized (playerTextures) {
-			return playerTextures.computeIfAbsent(Type.SKIN,
+		synchronized (skinInfo) {
+			return skinInfo.playerTextures.computeIfAbsent(Type.SKIN,
 					$ -> DefaultPlayerSkin.getDefaultSkin(getSkinUUID()));
 		}
 	}
 
 	public ResourceLocation getCape() {
-		return playerTextures.get(Type.CAPE);
+		return skinInfo.playerTextures.get(Type.CAPE);
 	}
 
 	public ResourceLocation getElytra() {
-		return playerTextures.getOrDefault(Type.ELYTRA, getCape());
+		return skinInfo.playerTextures.getOrDefault(Type.ELYTRA, getCape());
 	}
 
 	public String getSkinType() {
-		return this.skinType == null ? DefaultPlayerSkin.getSkinType(getSkinUUID()) : this.skinType;
+		return this.skinInfo.skinType == null ? DefaultPlayerSkin.getSkinType(getSkinUUID()) : this.skinInfo.skinType;
 	}
 
 	void reloadTextures() {
