@@ -1,5 +1,5 @@
 modLoader="javafml"
-loaderVersion="[35,)"
+loaderVersion="[40,)"
 issueTrackerURL="https://github.com/tterrag1098/DummyPlayers/issues"
 license = "MPLv2"
 
@@ -12,13 +12,13 @@ authors="tterrag" #optional
 [[dependencies.dummyplayers]] 
     modId="forge"
     mandatory=true 
-    versionRange="[35.1.29,)"
+    versionRange="[40.1.84,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.dummyplayers]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.16.4,1.17)"
+    versionRange="[1.18.2,1.19)"
     ordering="NONE"
     side="BOTH"

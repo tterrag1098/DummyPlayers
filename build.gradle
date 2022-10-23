@@ -1,22 +1,26 @@
 buildscript {
     repositories {
-        maven { url = 'https://maven.minecraftforge.net/' }
-        jcenter()
+        maven { url = 'https://maven.minecraftforge.net' }
+        maven { url = 'https://repo.spongepowered.org/maven' }
+        maven { url = 'https://maven.parchmentmc.org' }
         mavenCentral()
-        mavenLocal()
-        maven {url='https://repo.spongepowered.org/repository/maven-public/'}
     }
     dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '3.+', changing: true
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.+', changing: true
+		classpath "org.parchmentmc:librarian:1.+"
         classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
     }
 }
 plugins {
-    id 'com.github.johnrengelman.shadow' version '5.2.0'
+    id 'maven-publish'
+    id 'eclipse'
+    id 'com.github.johnrengelman.shadow' version '7.1.0'
+    id 'com.matthewprenger.cursegradle' version '1.4.0'
 }
 apply plugin: 'net.minecraftforge.gradle'
-apply plugin: 'eclipse'
+apply plugin: 'org.parchmentmc.librarian.forgegradle'
 apply plugin: 'org.spongepowered.mixin'
+apply from: 'https://raw.githubusercontent.com/SizableShrimp/Forge-Class-Remapper/main/classremapper.gradle'
 
 group = 'com.tterrag.dummyplayers'
 archivesBaseName = 'DummyPlayers'
@@ -25,10 +29,10 @@ ext.buildnumber = 0
 project.buildnumber = System.getenv('BUILD_NUMBER') ?: 'custom'
 version = "${mod_version}-${release_type}+${buildnumber}"
 
-sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
+sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '17' // Need this here so eclipse task generates correctly.
 
 minecraft {
-    mappings channel: 'snapshot', version: '20201028-1.16.3'
+    mappings channel: 'parchment', version: '2022.08.21-1.18.2'
     
     accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
 
@@ -98,7 +102,14 @@ configurations {
 
 repositories {
     maven { // Registrate
-        url "http://maven.tterrag.com/"
+        url "https://maven.tterrag.com/"
+    }
+    maven {
+        name = 'sponge'
+    	url = 'https://repo.spongepowered.org/repository/maven-public/'
+    	content {
+    	    includeGroup "org.spongepowered"
+    	}
     }
     mavenLocal()
 }
@@ -111,7 +122,7 @@ dependencies {
     shade registrate
 
     // Annotation Processors
-    def mixinap = 'org.spongepowered:mixin:0.8:processor'
+    def mixinap = 'org.spongepowered:mixin:0.8.5-SNAPSHOT:processor'
     annotationProcessor mixinap
     testAnnotationProcessor mixinap
 }

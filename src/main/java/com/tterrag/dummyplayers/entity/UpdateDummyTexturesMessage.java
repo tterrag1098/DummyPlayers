@@ -3,9 +3,9 @@ package com.tterrag.dummyplayers.entity;
 import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.network.PacketBuffer;
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.entity.Entity;
+import net.minecraftforge.network.NetworkEvent;
 
 public class UpdateDummyTexturesMessage {
 
@@ -15,18 +15,18 @@ public class UpdateDummyTexturesMessage {
 		this.id = id;
 	}
 
-	public void toBytes(PacketBuffer buf) {
+	public void toBytes(FriendlyByteBuf buf) {
 		buf.writeInt(id);
 	}
 
-	public static UpdateDummyTexturesMessage fromBytes(PacketBuffer buf) {
+	public static UpdateDummyTexturesMessage fromBytes(FriendlyByteBuf buf) {
 		return new UpdateDummyTexturesMessage(buf.readInt());
 	}
 
 	@SuppressWarnings("resource")
 	public void handle(Supplier<NetworkEvent.Context> ctx) {
 		ctx.get().enqueueWork(() -> {
-			Entity e = Minecraft.getInstance().world.getEntityByID(id);
+			Entity e = Minecraft.getInstance().level.getEntity(id);
 			if (e instanceof DummyPlayerEntity) {
 				((DummyPlayerEntity) e).reloadTextures();
 			}

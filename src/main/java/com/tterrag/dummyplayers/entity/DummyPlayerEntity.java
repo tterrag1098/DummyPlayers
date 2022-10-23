@@ -23,61 +23,59 @@ import com.tterrag.registrate.util.entry.RegistryEntry;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.DefaultPlayerSkin;
-import net.minecraft.entity.EntityClassification;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.ai.attributes.GlobalEntityTypeAttributes;
-import net.minecraft.entity.item.ArmorStandEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.PacketBuffer;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.network.datasync.IDataSerializer;
-import net.minecraft.server.management.PlayerProfileCache;
-import net.minecraft.tileentity.SkullTileEntity;
-import net.minecraft.util.LazyValue;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.text.IFormattableTextComponent;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.StringTextComponent;
-import net.minecraft.world.World;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializer;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.players.GameProfileCache;
+import net.minecraft.util.LazyLoadedValue;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.SkullBlockEntity;
+import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.common.util.NonNullLazy;
 import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.network.PacketDistributor;
-import net.minecraftforge.fml.server.ServerLifecycleHooks;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
-public class DummyPlayerEntity extends ArmorStandEntity {
+public class DummyPlayerEntity extends ArmorStand {
 
 	public static final RegistryEntry<EntityType<DummyPlayerEntity>> DUMMY_PLAYER = DummyPlayers.registrate().object("dummy_player")
-			.<DummyPlayerEntity>entity(DummyPlayerEntity::new, EntityClassification.MISC)
-			.properties(b -> b.size(0.6F, 1.8F)) // Copied from player definition
-			.onRegister(type -> GlobalEntityTypeAttributes.put(type, LivingEntity.registerAttributes().create()))
+			.<DummyPlayerEntity>entity(DummyPlayerEntity::new, MobCategory.MISC)
+			.properties(b -> b.sized(0.6F, 1.8F)) // Copied from player definition
 			.register();
 
 	public static final ItemEntry<DummyPlayerItem> SPAWNER = DummyPlayers.registrate()
 			.item(DummyPlayerItem::new)
 			.register();
 
-	private static final IDataSerializer<GameProfile> PROFILE_SERIALIZER = new IDataSerializer<GameProfile>() {
-		public GameProfile copyValue(GameProfile value) {
+	private static final EntityDataSerializer<GameProfile> PROFILE_SERIALIZER = new EntityDataSerializer<GameProfile>() {
+		public GameProfile copy(GameProfile value) {
 			return value == null ? null : new GameProfile(value.getId(), value.getName());
 		}
 
 		@Override
-		public GameProfile read(PacketBuffer buf) {
+		public GameProfile read(FriendlyByteBuf buf) {
 			int mode = buf.readByte();
 			UUID id = null;
 			String name = null;
 			if ((mode & 0b01) > 0) {
-				id = buf.readUniqueId();
+				id = buf.readUUID();
 			}
 			if ((mode & 0b10) > 0) {
-				name = buf.readString(100);
+				name = buf.readUtf(100);
 			}
 			if (id == null && name == null) {
 				return null;
@@ -86,7 +84,7 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 		}
 
 		@Override
-		public void write(PacketBuffer buf, GameProfile value) {
+		public void write(FriendlyByteBuf buf, GameProfile value) {
 			int mode = 0;
 			if (value != null && value.getId() != null) {
 				mode |= 0b01;
@@ -96,25 +94,25 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 			}
 			buf.writeByte(mode);
 			if ((mode & 0b01) > 0) {
-				buf.writeUniqueId(value.getId());
+				buf.writeUUID(value.getId());
 			}
 			if ((mode & 0b10) > 0) {
-				buf.writeString(value.getName(), 100);
+				buf.writeUtf(value.getName(), 100);
 			}
 		}
 	};
 	static {
-		DataSerializers.registerSerializer(PROFILE_SERIALIZER);
+		EntityDataSerializers.registerSerializer(PROFILE_SERIALIZER);
 	}
 
 	public static final GameProfile NULL_PROFILE = new GameProfile(UUID.fromString("e664daf0-5962-45a5-b8df-e4c992d372a9"), null);
-	private static final DataParameter<GameProfile> GAME_PROFILE = EntityDataManager.createKey(DummyPlayerEntity.class, PROFILE_SERIALIZER);
-	private static final DataParameter<Optional<ITextComponent>> PREFIX = EntityDataManager.createKey(DummyPlayerEntity.class, DataSerializers.OPTIONAL_TEXT_COMPONENT);
-	private static final DataParameter<Optional<ITextComponent>> SUFFIX = EntityDataManager.createKey(DummyPlayerEntity.class, DataSerializers.OPTIONAL_TEXT_COMPONENT);
+	private static final EntityDataAccessor<GameProfile> GAME_PROFILE = SynchedEntityData.defineId(DummyPlayerEntity.class, PROFILE_SERIALIZER);
+	private static final EntityDataAccessor<Optional<Component>> PREFIX = SynchedEntityData.defineId(DummyPlayerEntity.class, EntityDataSerializers.OPTIONAL_COMPONENT);
+	private static final EntityDataAccessor<Optional<Component>> SUFFIX = SynchedEntityData.defineId(DummyPlayerEntity.class, EntityDataSerializers.OPTIONAL_COMPONENT);
 
 	// TODO is this ok in singleplayer
-	private static final LazyValue<PlayerProfileCache> PROFILE_CACHE = new LazyValue<>(() ->
-    	new PlayerProfileCache(ServerLifecycleHooks.getCurrentServer().getGameProfileRepository(), new File(".", "dummyplayercache.json"))
+	private static final NonNullLazy<GameProfileCache> PROFILE_CACHE = NonNullLazy.of(() ->
+    	new GameProfileCache(ServerLifecycleHooks.getCurrentServer().getProfileRepository(), new File(".", "dummyplayercache.json"))
 	);
 
 	public static void register() {}
@@ -131,103 +129,103 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 	
 	private final SkinInfo skinInfo = new SkinInfo();
 
-	protected DummyPlayerEntity(EntityType<? extends DummyPlayerEntity> type, World worldIn) {
+	protected DummyPlayerEntity(EntityType<? extends DummyPlayerEntity> type, Level worldIn) {
 		super(type, worldIn);
-		if (!worldIn.isRemote) {
+		if (!worldIn.isClientSide) {
 			// Show arms always on
-			this.dataManager.set(STATUS, (byte) 0b100);
+			this.entityData.set(DATA_CLIENT_FLAGS, (byte) 0b100);
 		}
 	}
 
-	public DummyPlayerEntity(World worldIn, double posX, double posY, double posZ) {
+	public DummyPlayerEntity(Level worldIn, double posX, double posY, double posZ) {
 		this(DUMMY_PLAYER.get(), worldIn);
-		this.setPosition(posX, posY, posZ);
+		this.setPos(posX, posY, posZ);
 	}
 
 	@Override
-	protected void registerData() {
-		super.registerData();
-		this.dataManager.register(GAME_PROFILE, NULL_PROFILE);
-		this.dataManager.register(PREFIX, Optional.empty());
-		this.dataManager.register(SUFFIX, Optional.empty());
+	protected void defineSynchedData() {
+		super.defineSynchedData();
+		this.entityData.define(GAME_PROFILE, NULL_PROFILE);
+		this.entityData.define(PREFIX, Optional.empty());
+		this.entityData.define(SUFFIX, Optional.empty());
 	}
 
 	@Override
-	public ITextComponent getProfessionName() {
-		return getProfile().getName() == null ? super.getProfessionName() : new StringTextComponent(getProfile().getName());
+	public Component getTypeName() {
+		return getProfile().getName() == null ? super.getTypeName() : new TextComponent(getProfile().getName());
 	}
 
 	@Override
-	public ITextComponent getDisplayName() {
-		IFormattableTextComponent ret = super.getDisplayName().deepCopy();
-		ITextComponent prefix = this.dataManager.get(PREFIX).orElse(null);
-		ITextComponent suffix = this.dataManager.get(SUFFIX).orElse(null);
+	public Component getDisplayName() {
+		MutableComponent ret = super.getDisplayName().copy();
+		Component prefix = this.entityData.get(PREFIX).orElse(null);
+		Component suffix = this.entityData.get(SUFFIX).orElse(null);
 		if (prefix != null) {
-			ret = prefix.deepCopy().append(ret);
+			ret = prefix.copy().append(ret);
 		}
 		if (suffix != null) {
-			ret = ret.append(suffix.deepCopy());
+			ret = ret.append(suffix.copy());
 		}
 		return ret;
 	}
 
 	@Override
-	public ItemStack getPickedResult(RayTraceResult target) {
+	public ItemStack getPickedResult(HitResult target) {
 		return new ItemStack(SPAWNER.get());
 	}
 
 	public GameProfile getProfile() {
-		return this.dataManager.get(GAME_PROFILE);
+		return this.entityData.get(GAME_PROFILE);
 	}
 
 	@Override
-	public void writeAdditional(CompoundNBT compound) {
-		super.writeAdditional(compound);
+	public void addAdditionalSaveData(CompoundTag compound) {
+		super.addAdditionalSaveData(compound);
 
-		this.dataManager.get(PREFIX)
-			.ifPresent(prefix -> compound.putString("NamePrefix", ITextComponent.Serializer.toJson(prefix)));
-		this.dataManager.get(SUFFIX)
-			.ifPresent(suffix -> compound.putString("NameSuffix", ITextComponent.Serializer.toJson(suffix)));
+		this.entityData.get(PREFIX)
+			.ifPresent(prefix -> compound.putString("NamePrefix", Component.Serializer.toJson(prefix)));
+		this.entityData.get(SUFFIX)
+			.ifPresent(suffix -> compound.putString("NameSuffix", Component.Serializer.toJson(suffix)));
 
 		GameProfile profile = getProfile();
 		if (profile.equals(NULL_PROFILE)) return;
 		if (profile.getId() != null) {
-			compound.putUniqueId("ProfileID", profile.getId());
+			compound.putUUID("ProfileID", profile.getId());
 		} else if (profile.getName() != null) {
 			compound.putString("ProfileName", profile.getName());
 		}
 	}
 
 	@Override
-	public void readAdditional(CompoundNBT compound) {
-		super.readAdditional(compound);
+	public void readAdditionalSaveData(CompoundTag compound) {
+		super.readAdditionalSaveData(compound);
 
-		if (compound.contains("NamePrefix", Constants.NBT.TAG_STRING)) {
-			this.dataManager.set(PREFIX, Optional.ofNullable(ITextComponent.Serializer.getComponentFromJson(compound.getString("NamePrefix"))));
+		if (compound.contains("NamePrefix", Tag.TAG_STRING)) {
+			this.entityData.set(PREFIX, Optional.ofNullable(Component.Serializer.fromJson(compound.getString("NamePrefix"))));
 		}
-		if (compound.contains("NameSuffix", Constants.NBT.TAG_STRING)) {
-			this.dataManager.set(SUFFIX, Optional.ofNullable(ITextComponent.Serializer.getComponentFromJson(compound.getString("NameSuffix"))));
+		if (compound.contains("NameSuffix", Tag.TAG_STRING)) {
+			this.entityData.set(SUFFIX, Optional.ofNullable(Component.Serializer.fromJson(compound.getString("NameSuffix"))));
 		}
 
-		if (compound.contains("ProfileName", Constants.NBT.TAG_STRING)) {
+		if (compound.contains("ProfileName", Tag.TAG_STRING)) {
 			String name = compound.getString("ProfileName");
 			GameProfile old = getProfile();
 			if (!StringUtils.isBlank(name)) {
-				this.dataManager.set(GAME_PROFILE, new GameProfile(null, compound.getString("ProfileName")));
+				this.entityData.set(GAME_PROFILE, new GameProfile(null, compound.getString("ProfileName")));
 			} else {
-				this.dataManager.set(GAME_PROFILE, NULL_PROFILE);
+				this.entityData.set(GAME_PROFILE, NULL_PROFILE);
 			}
 			if (old == null || old.getName() == null || !old.getName().equals(name)) {
 				fillProfile();
 			}
-		} else if (compound.hasUniqueId("ProfileID")) {
+		} else if (compound.hasUUID("ProfileID")) {
 			String existingName = getProfile().getName();
-			UUID newId = compound.getUniqueId("ProfileID");
+			UUID newId = compound.getUUID("ProfileID");
 			if (getProfile() == null || getProfile().getId() == null && getProfile().getName() == null
 					|| !getProfile().getId().equals(newId)) {
 				// Only update the profile (and thus the texture) if it has changed in some way
 				// Avoids unnecessary texture reloads on the client when changing pose/name
-				this.dataManager.set(GAME_PROFILE, new GameProfile(compound.getUniqueId("ProfileID"), existingName));
+				this.entityData.set(GAME_PROFILE, new GameProfile(compound.getUUID("ProfileID"), existingName));
 				fillProfile();
 			}
 		}
@@ -236,8 +234,8 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 	@Override
 	public void tick() {
 		super.tick();
-		if (!world.isRemote && reloadTextures) {
-			LTExtrasNetwork.CHANNEL.send(PacketDistributor.TRACKING_ENTITY.with(() -> this), new UpdateDummyTexturesMessage(this.getEntityId()));
+		if (!level.isClientSide && reloadTextures) {
+			LTExtrasNetwork.CHANNEL.send(PacketDistributor.TRACKING_ENTITY.with(() -> this), new UpdateDummyTexturesMessage(this.getId()));
 			reloadTextures = false;
 		}
 	}
@@ -248,35 +246,34 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 			reloadTextures();
 		}
 		CompletableFuture.supplyAsync(() -> {
-			GameProfile ret;
+			Optional<GameProfile> ret;
 			if (profile.getId() != null) {
-				ret = PROFILE_CACHE.getValue().getProfileByUUID(profile.getId());
-				if (ret != null) return ret;
-				if (SkullTileEntity.sessionService == null) return profile;
+				ret = PROFILE_CACHE.get().get(profile.getId());
+				if (ret.isPresent()) return ret.get();
+				if (SkullBlockEntity.sessionService == null) return profile;
 				try {
-					return SkullTileEntity.sessionService.fillProfileProperties(profile, true);
+					return SkullBlockEntity.sessionService.fillProfileProperties(profile, true);
 				} catch (Exception e) {
 					e.printStackTrace();
 					return profile;
 				}
 			} else {
-				PlayerProfileCache cache = PROFILE_CACHE.getValue();
+				GameProfileCache cache = PROFILE_CACHE.get();
 				synchronized (cache) {
-					ret = cache.getGameProfileForUsername(getProfile().getName());
+					ret = cache.get(getProfile().getName());
 				}
 			}
-			return ret == null ? profile : ret;
+			return ret.orElse(profile);
 		}).thenAcceptAsync(gp -> {
-			DummyPlayerEntity.this.dataManager.set(GAME_PROFILE, gp);
+			DummyPlayerEntity.this.entityData.set(GAME_PROFILE, gp);
 			reloadTextures();
 		}, getMainThreadExecutor());
 	}
 
 	private Executor getMainThreadExecutor() {
-		return this.getEntityWorld().isRemote ? DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> Minecraft::getInstance) : getServer();
+		return this.getCommandSenderWorld().isClientSide ? DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> Minecraft::getInstance) : getServer();
 	}
 
-	@Nullable
 	@OnlyIn(Dist.CLIENT)
 	protected void updateSkinTexture() {
 		if (reloadTextures) {
@@ -287,7 +284,7 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 					if (getProfile().equals(NULL_PROFILE) || getProfile().getId() == null) return;
 					LogManager.getLogger().info("Loading skin data for GameProfile: " + getProfile());
 					final SkinInfo skinInfo = this.skinInfo;
-					Minecraft.getInstance().getSkinManager().loadProfileTextures(getProfile(), (p_210250_1_, p_210250_2_, p_210250_3_) -> {
+					Minecraft.getInstance().getSkinManager().registerSkins(getProfile(), (p_210250_1_, p_210250_2_, p_210250_3_) -> {
 						synchronized (skinInfo) {
 							skinInfo.playerTextures.put(p_210250_1_, p_210250_2_);
 							if (p_210250_1_ == Type.SKIN) {
@@ -304,7 +301,7 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 	}
 
 	private UUID getSkinUUID() {
-		return getProfile().equals(NULL_PROFILE) || getProfile().getId() == null ? getUniqueID() : getProfile().getId();
+		return getProfile().equals(NULL_PROFILE) || getProfile().getId() == null ? getUUID() : getProfile().getId();
 	}
 
 	public ResourceLocation getSkin() {
@@ -324,7 +321,7 @@ public class DummyPlayerEntity extends ArmorStandEntity {
 	}
 
 	public String getSkinType() {
-		return this.skinInfo.skinType == null ? DefaultPlayerSkin.getSkinType(getSkinUUID()) : this.skinInfo.skinType;
+		return this.skinInfo.skinType == null ? DefaultPlayerSkin.getSkinModelName(getSkinUUID()) : this.skinInfo.skinType;
 	}
 
 	void reloadTextures() {

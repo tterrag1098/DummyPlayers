@@ -2,20 +2,17 @@ package com.tterrag.dummyplayers.client.renderer.dummy;
 
 import com.tterrag.dummyplayers.entity.DummyPlayerEntity;
 
-import net.minecraft.client.renderer.entity.model.BipedModel;
+import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.geom.ModelPart;
 
-public class DummyPlayerArmorModel extends BipedModel<DummyPlayerEntity> {
+public class DummyPlayerArmorModel extends HumanoidModel<DummyPlayerEntity> {
 
-	public DummyPlayerArmorModel(float modelSize) {
-		this(modelSize, 64, 32);
-	}
-
-	protected DummyPlayerArmorModel(float modelSize, int textureWidthIn, int textureHeightIn) {
-		super(modelSize, 0.0F, textureWidthIn, textureHeightIn);
+	public DummyPlayerArmorModel(ModelPart pRoot) {
+		super(pRoot);
 	}
 
 	@Override
-	public void setRotationAngles(DummyPlayerEntity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+	public void setupAnim(DummyPlayerEntity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
 		DummyPlayerModel.setArmorStandAngles(entityIn, this);
 	}
 }

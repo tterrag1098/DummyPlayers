@@ -1,46 +1,60 @@
 package com.tterrag.dummyplayers.client.renderer.dummy;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.vertex.IVertexBuilder;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.tterrag.dummyplayers.entity.DummyPlayerEntity;
 
-import net.minecraft.client.renderer.IRenderTypeBuffer;
+import net.minecraft.client.model.Model;
+import net.minecraft.client.model.geom.EntityModelSet;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.PartPose;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
+import net.minecraft.client.model.geom.builders.PartDefinition;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.ArmorStandRenderer;
-import net.minecraft.client.renderer.entity.IEntityRenderer;
-import net.minecraft.client.renderer.entity.layers.LayerRenderer;
-import net.minecraft.client.renderer.model.Model;
-import net.minecraft.client.renderer.model.ModelRenderer;
+import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.Mth;
 
-public class DummyStandLayer extends LayerRenderer<DummyPlayerEntity, DummyPlayerModel> {
+public class DummyStandLayer extends RenderLayer<DummyPlayerEntity, DummyPlayerModel> {
+	
+	public static final ModelLayerLocation LAYER = new ModelLayerLocation(DummyPlayerEntity.DUMMY_PLAYER.getId(), "stand");
 
 	private final Model standModel;
-	private final ModelRenderer standBase;
+	private final ModelPart standBase;
 
-    public DummyStandLayer(IEntityRenderer<DummyPlayerEntity, DummyPlayerModel> entityRendererIn) {
+    public DummyStandLayer(RenderLayerParent<DummyPlayerEntity, DummyPlayerModel> entityRendererIn, EntityModelSet context) {
         super(entityRendererIn);
-        this.standModel = new Model(RenderType::getEntitySolid) {
+        this.standModel = new Model(RenderType::entitySolid) {
         	
         	@Override
-        	public void render(MatrixStack matrixStackIn, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float alpha) {
+        	public void renderToBuffer(PoseStack matrixStackIn, VertexConsumer bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float alpha) {
         		standBase.render(matrixStackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, alpha);
         	}
         };
-        this.standModel.textureHeight = this.standModel.textureWidth = 64;
-		this.standBase = new ModelRenderer(standModel, 0, 32);
-		this.standBase.addBox(-6.0F, 11.0F, -6.0F, 12.0F, 1.0F, 12.0F, 0);
-		this.standBase.setRotationPoint(0.0F, 12.0F, 0.0F);
+        
+        this.standBase = context.bakeLayer(LAYER);
     }
+    
+    public static LayerDefinition createLayer() {
+        MeshDefinition meshdefinition = new MeshDefinition();
+        PartDefinition partdefinition = meshdefinition.getRoot();
+        partdefinition.addOrReplaceChild("base_plate", CubeListBuilder.create().texOffs(0, 32).addBox(-6.0F, 11.0F, -6.0F, 12.0F, 1.0F, 12.0F), PartPose.offset(0.0F, 12.0F, 0.0F));
+		return LayerDefinition.create(meshdefinition, 64, 64);
+     }
 
     @Override
-    public void render(MatrixStack matrixStackIn, IRenderTypeBuffer bufferIn, int packedLightIn, DummyPlayerEntity entityIn, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch) {
-    	if (entityIn.hasNoBasePlate()) return;
-        this.standBase.rotateAngleY = ((float)Math.PI / 180F) * -MathHelper.interpolateAngle(partialTicks, entityIn.prevRotationYaw, entityIn.rotationYaw);
-        matrixStackIn.push();
+    public void render(PoseStack matrixStackIn, MultiBufferSource bufferIn, int packedLightIn, DummyPlayerEntity entityIn, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch) {
+    	if (entityIn.isNoBasePlate()) return;
+        this.standBase.yRot = ((float)Math.PI / 180F) * -Mth.rotLerp(partialTicks, entityIn.yRotO, entityIn.getYRot());
+        matrixStackIn.pushPose();
         matrixStackIn.translate(0, 1f / 16f, 0);
-    	this.standModel.render(matrixStackIn, bufferIn.getBuffer(this.standModel.getRenderType(ArmorStandRenderer.TEXTURE_ARMOR_STAND)), packedLightIn, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
-    	matrixStackIn.pop();
+    	this.standModel.renderToBuffer(matrixStackIn, bufferIn.getBuffer(this.standModel.renderType(ArmorStandRenderer.DEFAULT_SKIN_LOCATION)), packedLightIn, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
+    	matrixStackIn.popPose();
     }
 }
