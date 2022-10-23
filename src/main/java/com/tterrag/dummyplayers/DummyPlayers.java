@@ -51,6 +51,7 @@ public class DummyPlayers {
 		event.registerEntityRenderer(DummyPlayerEntity.DUMMY_PLAYER.get(), DummyPlayerEntityRenderer::new);
 	}
 	
+	@OnlyIn(Dist.CLIENT)
 	private void registerLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
 		event.registerLayerDefinition(DummyStandLayer.LAYER, DummyStandLayer::createLayer);
 	}
