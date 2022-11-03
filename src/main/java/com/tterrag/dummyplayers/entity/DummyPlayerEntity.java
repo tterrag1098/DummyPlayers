@@ -2,6 +2,7 @@ package com.tterrag.dummyplayers.entity;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -208,24 +209,19 @@ public class DummyPlayerEntity extends ArmorStand {
 		}
 
 		if (compound.contains("ProfileName", Tag.TAG_STRING)) {
-			String name = compound.getString("ProfileName");
-			GameProfile old = getProfile();
-			if (!StringUtils.isBlank(name)) {
-				this.entityData.set(GAME_PROFILE, new GameProfile(null, compound.getString("ProfileName")));
-			} else {
-				this.entityData.set(GAME_PROFILE, NULL_PROFILE);
-			}
-			if (old == null || old.getName() == null || !old.getName().equals(name)) {
+			String newName = compound.getString("ProfileName");
+			String oldName = getProfile().getName();
+			if (!Objects.equals(newName, oldName)) {
+				this.entityData.set(GAME_PROFILE, StringUtils.isBlank(newName) ? NULL_PROFILE : new GameProfile(null, newName));
 				fillProfile();
 			}
 		} else if (compound.hasUUID("ProfileID")) {
-			String existingName = getProfile().getName();
+			UUID oldId = getProfile().getId();
 			UUID newId = compound.getUUID("ProfileID");
-			if (getProfile() == null || getProfile().getId() == null && getProfile().getName() == null
-					|| !getProfile().getId().equals(newId)) {
+			if (!Objects.equals(newId, oldId)) {
 				// Only update the profile (and thus the texture) if it has changed in some way
 				// Avoids unnecessary texture reloads on the client when changing pose/name
-				this.entityData.set(GAME_PROFILE, new GameProfile(compound.getUUID("ProfileID"), existingName));
+				this.entityData.set(GAME_PROFILE, new GameProfile(newId, null));
 				fillProfile();
 			}
 		}
