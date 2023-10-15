@@ -23,12 +23,12 @@ public class DummyPlayerEntityRenderer extends LivingEntityRenderer<DummyPlayerE
 		this.slim = new DummyPlayerModel(context.bakeLayer(ModelLayers.PLAYER_SLIM), true);
 		this.addLayer(new DummyStandLayer(this, context.getModelSet()));
 	    this.addLayer(new DummyArmorLayer<>(this,
-	    		new HumanoidArmorLayer<>(this, new DummyPlayerArmorModel(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)), new DummyPlayerArmorModel(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR))),
-	    		new HumanoidArmorLayer<>(this, new DummyPlayerArmorModel(context.bakeLayer(ModelLayers.PLAYER_SLIM_INNER_ARMOR)), new DummyPlayerArmorModel(context.bakeLayer(ModelLayers.PLAYER_SLIM_OUTER_ARMOR)))));
-		this.addLayer(new ItemInHandLayer<>(this));
+	    		new HumanoidArmorLayer<>(this, new DummyPlayerArmorModel(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)), new DummyPlayerArmorModel(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)), context.getModelManager()),
+	    		new HumanoidArmorLayer<>(this, new DummyPlayerArmorModel(context.bakeLayer(ModelLayers.PLAYER_SLIM_INNER_ARMOR)), new DummyPlayerArmorModel(context.bakeLayer(ModelLayers.PLAYER_SLIM_OUTER_ARMOR)), context.getModelManager())));
+		this.addLayer(new ItemInHandLayer<>(this, context.getItemInHandRenderer()));
 		this.addLayer(new DummyCapeLayer(this));
 	    this.addLayer(new DummyElytraLayer(this, context.getModelSet()));
-	    this.addLayer(new CustomHeadLayer<>(this, context.getModelSet()));
+	    this.addLayer(new CustomHeadLayer<>(this, context.getModelSet(), context.getItemInHandRenderer()));
 	}
 
 	@Override

@@ -29,14 +29,12 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializer;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.players.GameProfileCache;
-import net.minecraft.util.LazyLoadedValue;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -153,7 +151,7 @@ public class DummyPlayerEntity extends ArmorStand {
 
 	@Override
 	public Component getTypeName() {
-		return getProfile().getName() == null ? super.getTypeName() : new TextComponent(getProfile().getName());
+		return getProfile().getName() == null ? super.getTypeName() : Component.literal(getProfile().getName());
 	}
 
 	@Override
@@ -227,10 +225,11 @@ public class DummyPlayerEntity extends ArmorStand {
 		}
 	}
 
+	@SuppressWarnings("resource")
 	@Override
 	public void tick() {
 		super.tick();
-		if (!level.isClientSide && reloadTextures) {
+		if (!level().isClientSide && reloadTextures) {
 			LTExtrasNetwork.CHANNEL.send(PacketDistributor.TRACKING_ENTITY.with(() -> this), new UpdateDummyTexturesMessage(this.getId()));
 			reloadTextures = false;
 		}
@@ -266,6 +265,7 @@ public class DummyPlayerEntity extends ArmorStand {
 		}, getMainThreadExecutor());
 	}
 
+	@SuppressWarnings("resource")
 	private Executor getMainThreadExecutor() {
 		return this.getCommandSenderWorld().isClientSide ? DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> Minecraft::getInstance) : getServer();
 	}

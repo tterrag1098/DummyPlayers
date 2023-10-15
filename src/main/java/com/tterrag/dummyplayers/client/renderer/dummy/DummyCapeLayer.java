@@ -2,6 +2,7 @@ package com.tterrag.dummyplayers.client.renderer.dummy;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import com.tterrag.dummyplayers.entity.DummyPlayerEntity;
 
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -12,7 +13,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import com.mojang.math.Vector3f;
 
 public class DummyCapeLayer extends RenderLayer<DummyPlayerEntity, DummyPlayerModel> {
 
@@ -27,8 +27,8 @@ public class DummyCapeLayer extends RenderLayer<DummyPlayerEntity, DummyPlayerMo
 				matrixStackIn.pushPose();
 				matrixStackIn.translate(0.0D, 0.0D, 0.125D);
 
-	            matrixStackIn.mulPose(Vector3f.XP.rotationDegrees(6.0F));
-	            matrixStackIn.mulPose(Vector3f.YP.rotationDegrees(180.0F));
+	            matrixStackIn.mulPose(Axis.XP.rotationDegrees(6.0F));
+	            matrixStackIn.mulPose(Axis.YP.rotationDegrees(180.0F));
 				VertexConsumer ivertexbuilder = bufferIn.getBuffer(RenderType.entitySolid(entity.getCape()));
 				this.getParentModel().renderCloak(matrixStackIn, ivertexbuilder, packedLightIn, OverlayTexture.NO_OVERLAY);
 				matrixStackIn.popPose();

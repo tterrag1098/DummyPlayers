@@ -1,12 +1,10 @@
 buildscript {
     repositories {
-        maven { url = 'https://maven.minecraftforge.net' }
         maven { url = 'https://repo.spongepowered.org/maven' }
         maven { url = 'https://maven.parchmentmc.org' }
         mavenCentral()
     }
     dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.+', changing: true
 		classpath "org.parchmentmc:librarian:1.+"
         classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
     }
@@ -14,10 +12,10 @@ buildscript {
 plugins {
     id 'maven-publish'
     id 'eclipse'
+    id 'net.neoforged.gradle' version '[6.0.18,6.2)'
     id 'com.github.johnrengelman.shadow' version '7.1.0'
     id 'com.matthewprenger.cursegradle' version '1.4.0'
 }
-apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'org.parchmentmc.librarian.forgegradle'
 apply plugin: 'org.spongepowered.mixin'
 apply from: 'https://raw.githubusercontent.com/SizableShrimp/Forge-Class-Remapper/main/classremapper.gradle'
@@ -38,7 +36,7 @@ if (System.getenv('GITHUB_RUN_NUMBER')) {
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '17' // Need this here so eclipse task generates correctly.
 
 minecraft {
-    mappings channel: 'parchment', version: '2022.08.21-1.18.2'
+    mappings channel: 'parchment', version: '2023.07.30-1.20.1'
     
     accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
 
@@ -121,7 +119,7 @@ repositories {
 }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    minecraft 'net.neoforged:forge:' + minecraft_version + '-' + forge_version
     
     def registrate = "com.tterrag.registrate:Registrate:${registrate_version}"
     implementation fg.deobf(registrate)
@@ -136,7 +134,7 @@ dependencies {
 shadowJar {
     configurations = [project.configurations.shade]
     relocate 'com.tterrag.registrate', 'com.tterrag.dummyplayers.repack.registrate'
-    classifier = ''
+    archiveClassifier = ''
 }
 
 reobf {
@@ -147,7 +145,7 @@ build.dependsOn shadowJar
 build.dependsOn reobfShadowJar
 
 jar {
-    classifier = 'slim'
+    archiveClassifier = 'slim'
 
     manifest {
         attributes([

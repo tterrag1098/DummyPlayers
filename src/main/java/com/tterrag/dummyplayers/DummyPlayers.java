@@ -7,7 +7,7 @@ import com.tterrag.dummyplayers.network.LTExtrasNetwork;
 import com.tterrag.registrate.Registrate;
 
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -25,7 +25,7 @@ public class DummyPlayers {
 
     private static NonNullLazy<Registrate> registrate = NonNullLazy.of(() -> 
     	Registrate.create(MODID)
-			.creativeModeTab(() -> CreativeModeTab.TAB_MISC));
+			.defaultCreativeTab(CreativeModeTabs.TOOLS_AND_UTILITIES));
 
     public static Registrate registrate() {
     	return registrate.get();
@@ -50,7 +50,7 @@ public class DummyPlayers {
 	private void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
 		event.registerEntityRenderer(DummyPlayerEntity.DUMMY_PLAYER.get(), DummyPlayerEntityRenderer::new);
 	}
-	
+
 	@OnlyIn(Dist.CLIENT)
 	private void registerLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
 		event.registerLayerDefinition(DummyStandLayer.LAYER, DummyStandLayer::createLayer);
