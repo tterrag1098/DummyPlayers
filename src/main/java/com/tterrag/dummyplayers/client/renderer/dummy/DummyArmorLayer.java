@@ -10,7 +10,6 @@ import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 
 public class DummyArmorLayer<T extends DummyPlayerEntity, M extends HumanoidModel<T>, A extends HumanoidModel<T>> extends RenderLayer<T, M> {
-	
 	private final HumanoidArmorLayer<T, M, A> normal, slim;
 	
 	public DummyArmorLayer(RenderLayerParent<T, M> pRenderer, HumanoidArmorLayer<T, M, A> normal, HumanoidArmorLayer<T, M, A> slim) {
@@ -20,11 +19,11 @@ public class DummyArmorLayer<T extends DummyPlayerEntity, M extends HumanoidMode
 	}
 
 	@Override
-	public void render(PoseStack pPoseStack, MultiBufferSource pBuffer, int pPackedLight, T pLivingEntity, float pLimbSwing, float pLimbSwingAmount, float pPartialTick, float pAgeInTicks, float pNetHeadYaw, float pHeadPitch) {
-		if ("default".equals(pLivingEntity.getSkinType())) {
-			normal.render(pPoseStack, pBuffer, pPackedLight, pLivingEntity, pLimbSwing, pLimbSwingAmount, pPartialTick, pAgeInTicks, pNetHeadYaw, pHeadPitch);;
-		} else {
-			slim.render(pPoseStack, pBuffer, pPackedLight, pLivingEntity, pLimbSwing, pLimbSwingAmount, pPartialTick, pAgeInTicks, pNetHeadYaw, pHeadPitch);
-		}
+	public void render(PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, T entity, float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
+		HumanoidArmorLayer<T, M, A> model = switch (entity.clientData().skin().model()) {
+			case WIDE -> normal;
+			case SLIM -> slim;
+		};
+		model.render(poseStack, bufferSource, packedLight, entity, limbSwing, limbSwingAmount, partialTick, ageInTicks, netHeadYaw, headPitch);;
 	}
 }

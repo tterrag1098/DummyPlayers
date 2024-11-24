@@ -2,8 +2,10 @@ package com.tterrag.dummyplayers.client.renderer.dummy;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.tterrag.dummyplayers.DummyPlayers;
 import com.tterrag.dummyplayers.entity.DummyPlayerEntity;
 
+import net.minecraft.client.model.HierarchicalModel;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.EntityModelSet;
 import net.minecraft.client.model.geom.ModelLayerLocation;
@@ -20,22 +22,26 @@ import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 
 public class DummyStandLayer extends RenderLayer<DummyPlayerEntity, DummyPlayerModel> {
 	
-	public static final ModelLayerLocation LAYER = new ModelLayerLocation(DummyPlayerEntity.DUMMY_PLAYER.getId(), "stand");
+	public static final ModelLayerLocation LAYER = new ModelLayerLocation(DummyPlayers.DUMMY_PLAYER.getId(), "stand");
 
-	private final Model standModel;
+	private final HierarchicalModel<DummyPlayerEntity> standModel;
 	private final ModelPart standBase;
 
     public DummyStandLayer(RenderLayerParent<DummyPlayerEntity, DummyPlayerModel> entityRendererIn, EntityModelSet context) {
         super(entityRendererIn);
-        this.standModel = new Model(RenderType::entitySolid) {
-        	
-        	@Override
-        	public void renderToBuffer(PoseStack matrixStackIn, VertexConsumer bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float alpha) {
-        		standBase.render(matrixStackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, alpha);
-        	}
+        this.standModel = new HierarchicalModel<>(RenderType::entitySolid) {
+            @Override
+            public void setupAnim(DummyPlayerEntity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+            }
+
+            @Override
+            public ModelPart root() {
+                return standBase;
+            }
         };
         
         this.standBase = context.bakeLayer(LAYER);
@@ -49,12 +55,12 @@ public class DummyStandLayer extends RenderLayer<DummyPlayerEntity, DummyPlayerM
      }
 
     @Override
-    public void render(PoseStack matrixStackIn, MultiBufferSource bufferIn, int packedLightIn, DummyPlayerEntity entityIn, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch) {
-    	if (entityIn.isNoBasePlate()) return;
-        this.standBase.yRot = ((float)Math.PI / 180F) * -Mth.rotLerp(partialTicks, entityIn.yRotO, entityIn.getYRot());
-        matrixStackIn.pushPose();
-        matrixStackIn.translate(0, 1f / 16f, 0);
-    	this.standModel.renderToBuffer(matrixStackIn, bufferIn.getBuffer(this.standModel.renderType(ArmorStandRenderer.DEFAULT_SKIN_LOCATION)), packedLightIn, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
-    	matrixStackIn.popPose();
+    public void render(PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, DummyPlayerEntity entity, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch) {
+    	if (entity.isNoBasePlate()) return;
+        this.standBase.yRot = Mth.DEG_TO_RAD * -Mth.rotLerp(partialTicks, entity.yRotO, entity.getYRot());
+        poseStack.pushPose();
+        poseStack.translate(0, 1f / 16f, 0);
+    	this.standModel.renderToBuffer(poseStack, bufferSource.getBuffer(this.standModel.renderType(ArmorStandRenderer.DEFAULT_SKIN_LOCATION)), packedLight, OverlayTexture.NO_OVERLAY);
+    	poseStack.popPose();
     }
 }

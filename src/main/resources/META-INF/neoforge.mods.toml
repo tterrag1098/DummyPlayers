@@ -1,24 +1,24 @@
 modLoader="javafml"
-loaderVersion="[47,)"
+loaderVersion="[2,)"
 issueTrackerURL="https://github.com/tterrag1098/DummyPlayers/issues"
 license = "MPLv2"
 
 [[mods]]
 modId="dummyplayers"
-version="${file.jarVersion}"
+version="${mod_version}"
 displayName="DummyPlayers"
 authors="tterrag" #optional
 
 [[dependencies.dummyplayers]] 
-    modId="forge"
+    modId="neoforge"
     mandatory=true 
-    versionRange="[47.1.79,)"
+    versionRange="[21.0.58-beta,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.dummyplayers]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.20.1,1.20.2)"
+    versionRange="[1.21,1.21.1)"
     ordering="NONE"
     side="BOTH"

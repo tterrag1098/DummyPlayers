@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.layers.CustomHeadLayer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.resources.ResourceLocation;
 
 public class DummyPlayerEntityRenderer extends LivingEntityRenderer<DummyPlayerEntity, DummyPlayerModel> {
@@ -32,18 +33,17 @@ public class DummyPlayerEntityRenderer extends LivingEntityRenderer<DummyPlayerE
 	}
 
 	@Override
-	public void render(DummyPlayerEntity entityIn, float entityYaw, float partialTicks, PoseStack matrixStackIn, MultiBufferSource bufferIn, int packedLightIn) {
-		if ("default".equals(entityIn.getSkinType())) {
-			this.model = normal;
-		} else {
-			this.model = slim;
-		}
-		super.render(entityIn, entityYaw, partialTicks, matrixStackIn, bufferIn, packedLightIn);
+	public void render(DummyPlayerEntity entity, float entityYaw, float partialTicks, PoseStack matrixStackIn, MultiBufferSource bufferIn, int packedLightIn) {
+        this.model = switch (entity.clientData().skin().model()) {
+            case WIDE -> normal;
+			case SLIM -> slim;
+        };
+		super.render(entity, entityYaw, partialTicks, matrixStackIn, bufferIn, packedLightIn);
 	}
 
 	@Override
 	protected boolean shouldShowName(DummyPlayerEntity entity) {
-		return !entity.getProfile().equals(DummyPlayerEntity.NULL_PROFILE) || entity.hasCustomName();
+		return entity.getProfile().name().isPresent() || entity.hasCustomName();
 	}
 
 	@Override
@@ -57,6 +57,6 @@ public class DummyPlayerEntityRenderer extends LivingEntityRenderer<DummyPlayerE
 
 	@Override
 	public ResourceLocation getTextureLocation(DummyPlayerEntity entity) {
-		return entity.getSkin();
+		return entity.clientData().skin().texture();
 	}
 }

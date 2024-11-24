@@ -1,27 +1,16 @@
-buildscript {
-    repositories {
-        maven { url = 'https://repo.spongepowered.org/maven' }
-        maven { url = 'https://maven.parchmentmc.org' }
-        mavenCentral()
-    }
-    dependencies {
-		classpath "org.parchmentmc:librarian:1.+"
-        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
-    }
-}
 plugins {
-    id 'maven-publish'
     id 'eclipse'
-    id 'net.neoforged.gradle' version '[6.0.18,6.2)'
-    id 'com.github.johnrengelman.shadow' version '7.1.0'
+    id 'idea'
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '1.0.0'
     id 'com.matthewprenger.cursegradle' version '1.4.0'
 }
-apply plugin: 'org.parchmentmc.librarian.forgegradle'
-apply plugin: 'org.spongepowered.mixin'
-apply from: 'https://raw.githubusercontent.com/SizableShrimp/Forge-Class-Remapper/main/classremapper.gradle'
 
 group = 'com.tterrag.dummyplayers'
-archivesBaseName = 'DummyPlayers'
+base {
+    archivesName = 'DummyPlayers'
+}
 
 ext.buildnumber = 0
 project.buildnumber = System.getenv('BUILD_NUMBER') ?: 'custom'
@@ -33,61 +22,41 @@ if (System.getenv('GITHUB_RUN_NUMBER')) {
     version = "${mod_version}-${release_type}+${buildnumber}"
 }
 
-sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '17' // Need this here so eclipse task generates correctly.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-minecraft {
-    mappings channel: 'parchment', version: '2023.07.30-1.20.1'
-    
-    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        minecraftVersion = minecraft_version
+        mappingsVersion = parchment_version
+    }
 
     runs {
         client {
-            taskName 'dummyplayers_client'
-            
-            workingDirectory project.file('run')
-
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-
-            mods {
-                dummyplayers {
-                    source sourceSets.main
-                }
-            }
+            client()
+            programArguments.addAll '--username', 'Dev###'
         }
 
         server {
-            taskName 'dummyplayers_server'
-        
-            workingDirectory project.file('run')
-
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-
-            mods {
-                dummyplayers {
-                    source sourceSets.main
-                }
-            }
+            server()
+            programArgument '--nogui'
         }
-        
+
         data {
-            taskName 'dummyplayers_data'
-        
-            workingDirectory project.file('run')
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
 
-            environment 'target', 'fmluserdevdata'
+        configureEach {
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
 
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-
-            mods {
-                dummyplayers {
-                    source sourceSets.main
-                }
-            }
-            
-            args '--mod', 'dummyplayers', '--all', '--output', rootProject.file('src/generated/resources/'), '--existing', rootProject.file('src/main/resources')
+    mods {
+        "${project.mod_id}" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.test
         }
     }
 }
@@ -97,73 +66,34 @@ sourceSets.main.resources {
 }
 
 repositories {
-    mavenLocal()
-}
-
-configurations {
-    shade
-}
-
-repositories {
-    maven { // Registrate
-        url "https://maven.tterrag.com/"
-    }
-    maven {
-        name = 'sponge'
-    	url = 'https://repo.spongepowered.org/repository/maven-public/'
-    	content {
-    	    includeGroup "org.spongepowered"
-    	}
-    }
+    maven { url = "https://maven.ithundxr.dev/snapshots/" }
+    maven { url = "https://maven.tterrag.com/" }
     mavenLocal()
 }
 
 dependencies {
-    minecraft 'net.neoforged:forge:' + minecraft_version + '-' + forge_version
-    
-    def registrate = "com.tterrag.registrate:Registrate:${registrate_version}"
-    implementation fg.deobf(registrate)
-    shade registrate
-
-    // Annotation Processors
-    def mixinap = 'org.spongepowered:mixin:0.8.5-SNAPSHOT:processor'
-    annotationProcessor mixinap
-    testAnnotationProcessor mixinap
-}
-
-shadowJar {
-    configurations = [project.configurations.shade]
-    relocate 'com.tterrag.registrate', 'com.tterrag.dummyplayers.repack.registrate'
-    archiveClassifier = ''
-}
-
-reobf {
-    shadowJar {}
-}
-
-build.dependsOn shadowJar
-build.dependsOn reobfShadowJar
-
-jar {
-    archiveClassifier = 'slim'
-
-    manifest {
-        attributes([
-            "Specification-Title": "dummyplayers",
-            "Specification-Vendor": "tterrag",
-            "Specification-Version": "1", // We are version 1 of ourselves
-            "Implementation-Title": project.name,
-            "Implementation-Version": "${version}",
-            "Implementation-Vendor" :"tterrag",
-            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-        ])
+    jarJar(implementation("com.tterrag.registrate:Registrate:MC1.21-${registrate_version}")) {
+        version {
+            strictly "[MC1.21-${registrate_version},MC1.22)"
+            prefer "MC1.21-${registrate_version}"
+        }
     }
 }
 
-if (System.getProperty("idea.sync.active") == "true") {
-    afterEvaluate {
-        tasks.withType(JavaCompile).all {
-            it.options.annotationProcessorPath = files()
-        }
+tasks.withType(ProcessResources).configureEach {
+    var replaceProperties = [
+            mod_version: mod_version,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
+    }
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
     }
 }
